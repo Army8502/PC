@@ -216,11 +216,11 @@ GunModule.gunshot = function(tool, hitPos, normal, part)
                             Normal = normalVec,
                         } })
 
-                        -- ยิงเสียง (optional)
-                        if gunData and gunData.FireSound then
-                            local sound = tool:FindFirstChild(gunData.FireSound)
-                            if sound then sound:Play() end
-                        end
+                        -- 🔇 ลบการเล่นเสียงออกเพื่อหลีกเลี่ยงการโหลด asset ที่ไม่อนุญาต
+                        -- if gunData and gunData.FireSound then
+                        --     local sound = tool:FindFirstChild(gunData.FireSound)
+                        --     if sound then sound:Play() end
+                        -- end
                     end
                 end)
             end
@@ -307,16 +307,26 @@ local function setGunAttribute(attrName, value)
     task.spawn(function()
         local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         local tool
+
         for i = 1, 30 do
             tool = char:FindFirstChildOfClass("Tool")
             if tool then break end
             task.wait(0.1)
         end
-        if tool and tool:GetAttribute(attrName) ~= nil then
+
+        if not tool then
+            warn("[SAFE] No tool equipped. Cannot set attribute: " .. attrName)
+            return
+        end
+
+        if tool:GetAttribute(attrName) ~= nil then
             tool:SetAttribute(attrName, value)
+        else
+            warn("[SAFE] Tool does not support attribute: " .. attrName)
         end
     end)
 end
+
 
 local recoilRow = createGunToggleRow("Recoil", recoilState, function(state)
     setGunAttribute("Recoil", state and 1 or 0)
