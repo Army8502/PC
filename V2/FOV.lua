@@ -21,7 +21,7 @@ local screenGui = Instance.new("ScreenGui", game.CoreGui)
 screenGui.Name = "FOV_UI"
 
 local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 200, 0, 220)
+frame.Size = UDim2.new(0, 200, 0, 280)
 frame.Position = UDim2.new(0, 20, 0, 370)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
@@ -656,5 +656,131 @@ game:GetService("UserInputService").InputBegan:Connect(function(input, gameProce
         logInfo("Hyper-Ragdoll Kill feature is now disabled.")
         isAutoRagdollEnabled = false
         isRagdollActive = false
+    end
+end)
+
+
+
+--// JUMP POWER SLIDER UI
+local jumpLabel = Instance.new("TextLabel", frame)
+jumpLabel.Size = UDim2.new(0, 180, 0, 20)
+jumpLabel.Position = UDim2.new(0, 10, 0, 210)
+jumpLabel.Text = "Jump Power: 50"
+jumpLabel.BackgroundTransparency = 1
+jumpLabel.TextColor3 = Color3.new(1, 1, 1)
+jumpLabel.Font = Enum.Font.SourceSans
+jumpLabel.TextSize = 14
+
+local jumpSlider = Instance.new("TextButton", frame)
+jumpSlider.Size = UDim2.new(0, 180, 0, 6)
+jumpSlider.Position = UDim2.new(0, 10, 0, 235)
+jumpSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+jumpSlider.BorderSizePixel = 0
+
+local sliderFill = Instance.new("Frame", jumpSlider)
+sliderFill.Size = UDim2.new(0, 0, 1, 0)
+sliderFill.Position = UDim2.new(0, 0, 0, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+sliderFill.BorderSizePixel = 0
+
+local dragging = false
+local minPower, maxPower = 10, 65
+
+local function updateJumpPower(x)
+    local relativeX = math.clamp(x - jumpSlider.AbsolutePosition.X, 0, jumpSlider.AbsoluteSize.X)
+    local percent = relativeX / jumpSlider.AbsoluteSize.X
+    local jumpPower = math.floor(minPower + (maxPower - minPower) * percent)
+
+    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+    currentJump = jumpPower
+    jumpLabel.Text = "Jump Power: " .. jumpPower
+
+    local char = workspace:FindFirstChild(LocalPlayer.Name)
+    if char and char:FindFirstChild("Humanoid") then
+        if jumpEnabled then
+        if jumpEnabled then
+        
+    end
+    end
+    end
+end
+
+jumpSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        updateJumpPower(input.Position.X)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        updateJumpPower(input.Position.X)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+
+
+local currentJump = defaultJump
+
+
+-- ลูปเปลี่ยน JumpHeight ตามลูกเลื่อนเมื่อ ON
+local jumpLoopActive = false
+local jumpLoopThread = nil
+
+local function startJumpLoop()
+    if jumpLoopActive then return end
+    jumpLoopActive = true
+    jumpLoopThread = task.spawn(function()
+        while jumpLoopActive do
+            local char = workspace:FindFirstChild(LocalPlayer.Name)
+            if char and char:FindFirstChild("Humanoid") and jumpEnabled then
+                char.Humanoid.UseJumpPower = false
+                char.Humanoid.JumpHeight = currentJump / 2
+            end
+            task.wait(0.1)
+        end
+    end)
+end
+
+local function stopJumpLoop()
+    jumpLoopActive = false
+    local char = workspace:FindFirstChild(LocalPlayer.Name)
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.UseJumpPower = false
+        char.Humanoid.JumpHeight = defaultJump
+    end
+end
+
+
+--// SUPER JUMP TOGGLE
+local jumpEnabled = false
+local defaultJump = 12
+
+local jumpToggle = Instance.new("TextButton", frame)
+jumpToggle.Size = UDim2.new(0, 180, 0, 25)
+jumpToggle.Position = UDim2.new(0, 10, 0, 250)
+jumpToggle.Text = "Jump: OFF"
+styleButton(jumpToggle)
+jumpToggle.TextSize = 14
+
+jumpToggle.MouseButton1Click:Connect(function()
+    jumpEnabled = not jumpEnabled
+    jumpToggle.Text = jumpEnabled and "Jump: ON" or "Jump: OFF"
+
+    local char = workspace:FindFirstChild(LocalPlayer.Name)
+    if char and char:FindFirstChild("Humanoid") then
+        if jumpEnabled then
+            char.Humanoid.UseJumpPower = false
+        char.Humanoid.JumpHeight = tonumber(jumpLabel.Text:match("%d+")) / 2
+        else
+            char.Humanoid.UseJumpPower = false
+        char.Humanoid.JumpHeight = defaultJump / 2
+        end
     end
 end)
