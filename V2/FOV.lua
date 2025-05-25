@@ -20,11 +20,78 @@ fovCircle.Filled = false
 local screenGui = Instance.new("ScreenGui", game.CoreGui)
 screenGui.Name = "FOV_UI"
 
+
+
+-- ปุ่มไอคอนแบบแยกที่ซ่อน UI ทั้งหมด ยกเว้นตัวเอง และจะไม่ซ่อนวง FOV ถ้าเปิดอยู่
+local toggleImageBtn = Instance.new("ImageButton")
+toggleImageBtn.Name = "MiniToggleBtn"
+toggleImageBtn.Parent = screenGui
+toggleImageBtn.Size = UDim2.new(0, 30, 0, 30)
+toggleImageBtn.Position = UDim2.new(0, 20, 0, 20)
+toggleImageBtn.Image = "rbxassetid://118284077656202"
+toggleImageBtn.BackgroundTransparency = 1
+toggleImageBtn.BorderSizePixel = 0
+
+local corner = Instance.new("UICorner", toggleImageBtn)
+corner.CornerRadius = UDim.new(0, 6)
+
+local uiVisible = true
+
+toggleImageBtn.MouseButton1Click:Connect(function()
+    uiVisible = not uiVisible
+
+    for _, child in pairs(screenGui:GetChildren()) do
+        if child ~= toggleImageBtn and child:IsA("GuiObject") then
+            child.Visible = uiVisible
+        end
+    end
+
+    -- วง FOV จะไม่ถูกซ่อนถ้าเปิดใช้งานอยู่
+    if fovCircle then
+        fovCircle.Visible = fovEnabled or uiVisible
+    end
+end)
+
+
+
 local frame = Instance.new("Frame", screenGui)
 frame.Size = UDim2.new(0, 200, 0, 280)
-frame.Position = UDim2.new(0, 20, 0, 370)
+frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
+
+
+--// AUTO UI SCALE (GROUP BASED)
+
+-- Advanced scale based on screen size
+local screen = camera.ViewportSize
+local scale = 1
+if screen.X < 700 then
+    scale = 0.7
+elseif screen.X < 900 then
+    scale = 0.85
+else
+    scale = 1
+end
+local UIScaleFactor = scale
+
+
+-- Adjust this to scale the whole UI group (1 = 100%, 1.5 = 150%, etc.)
+local UIScaleFactor = (camera.ViewportSize.X < 800 or camera.ViewportSize.Y < 600) and 0.8 or 1
+
+-- Add UIAspectRatioConstraint to avoid stretching
+local function applyUIScaleGroup(baseFrame)
+    local scale = Instance.new("UIScale")
+    scale.Scale = UIScaleFactor
+    scale.Parent = baseFrame
+end
+
+applyUIScaleGroup(frame)
+
+-- ทำให้ UI หลักสามารถลากได้
+frame.Active = true
+frame.Draggable = true
+
 
 -- Styling
 local corner = Instance.new("UICorner", frame)
