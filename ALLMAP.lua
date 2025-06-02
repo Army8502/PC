@@ -267,7 +267,9 @@ local function createESP(player)
 
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "ESP_HIGHLIGHT"
-		highlight.FillColor = Color3.fromRGB(255, 0, 0)
+		highlight.FillColor = (player.Team == LocalPlayer.Team)
+			and Color3.fromRGB(0, 170, 255)
+			or Color3.fromRGB(255, 0, 0)
 		highlight.OutlineColor = Color3.new(1, 1, 1)
 		highlight.FillTransparency = 0.5
 		highlight.OutlineTransparency = 0
@@ -275,6 +277,7 @@ local function createESP(player)
 		highlight.Parent = player.Character
 	end
 end
+
 
 local function removeESP(player)
 	if player.Character then
@@ -566,37 +569,39 @@ end)
 
 local camera = workspace.CurrentCamera
 
--- Lock-on system: track head in FOV circle (partially) within 100 studs
+-- Lock-on system: track head in FOV circle (partially) within 1000 studs
 local function getClosestTargetInFOV()
     local closest = nil
     local shortestDist = math.huge
     local center = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-            local head = player.Character.Head
-            local headPos = head.Position
-            local dist3D = (headPos - camera.CFrame.Position).Magnitude
-            if dist3D <= 200 then
-                local screenPoint, onScreen = camera:WorldToViewportPoint(headPos)
-                if onScreen then
-                    
-                -- Raycast to check visibility
-                local origin = camera.CFrame.Position
-                local direction = (headPos - origin)
-                local raycastParams = RaycastParams.new()
-                raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-                raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-                if blockCheckEnabled then
-                local result = workspace:Raycast(origin, direction, raycastParams)
-                if result and result.Instance:IsDescendantOf(player.Character) == false then
-                    continue
-                end
-                end
-local dist2D = (Vector2.new(screenPoint.X, screenPoint.Y) - center).Magnitude
-                    if dist2D <= fovRadius and dist2D < shortestDist then
-                        shortestDist = dist2D
-                        closest = head
+        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team then -- ไม่ล็อกทีมเดียวกัน
+            if player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("Humanoid") then
+                if player.Character.Humanoid.Health > 0 then -- ไม่ล็อกถ้าเลือดหมด
+                    local head = player.Character.Head
+                    local headPos = head.Position
+                    local dist3D = (headPos - camera.CFrame.Position).Magnitude
+                    if dist3D <= 1000 then
+                        local screenPoint, onScreen = camera:WorldToViewportPoint(headPos)
+                        if onScreen then
+                            local origin = camera.CFrame.Position
+                            local direction = (headPos - origin)
+                            local raycastParams = RaycastParams.new()
+                            raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+                            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+                            if blockCheckEnabled then
+                                local result = workspace:Raycast(origin, direction, raycastParams)
+                                if result and not result.Instance:IsDescendantOf(player.Character) then
+                                    continue
+                                end
+                            end
+                            local dist2D = (Vector2.new(screenPoint.X, screenPoint.Y) - center).Magnitude
+                            if dist2D <= fovRadius and dist2D < shortestDist then
+                                shortestDist = dist2D
+                                closest = head
+                            end
+                        end
                     end
                 end
             end
@@ -648,4 +653,106 @@ local uiVisible = true
 toggleImageBtn.MouseButton1Click:Connect(function()
 	uiVisible = not uiVisible
 	container.Visible = uiVisible
+end)
+
+
+--== HEALTH BAR ESP TOGGLE UI ==--
+local healthEspEnabled = false
+
+local healthEspToggle = Instance.new("TextButton", espSection)
+healthEspToggle.Size = UDim2.new(0, 130 * scale, 0, 26 * scale)
+healthEspToggle.Position = UDim2.new(0, 0, 1, -25 * scale)
+healthEspToggle.Text = "Show Health: OFF"
+healthEspToggle.Font = Enum.Font.Gotham
+healthEspToggle.TextSize = 13 * scale
+healthEspToggle.TextColor3 = Color3.fromRGB(200, 200, 200)
+healthEspToggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+Instance.new("UICorner", healthEspToggle).CornerRadius = UDim.new(0, 5 * scale)
+
+-- Function to create health bar for a player
+local function createHealthBar(player)
+    if player == LocalPlayer then return end
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") then
+        if player.Character:FindFirstChild("HealthBarESP") then
+            player.Character.HealthBarESP:Destroy()
+        end
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "HealthBarESP"
+        billboard.Adornee = player.Character.HumanoidRootPart
+        billboard.Size = UDim2.new(0, 4, 0, 40)
+billboard.SizeOffset = Vector2.new(0, 0)
+billboard.LightInfluence = 0
+billboard.StudsOffset = Vector3.new(0, 0, 0)
+billboard.MaxDistance = math.huge
+
+        billboard.StudsOffset = Vector3.new(2, 0, 0)
+        billboard.AlwaysOnTop = true
+
+        local bgBar = Instance.new("Frame", billboard)
+        bgBar.Size = UDim2.new(1, 0, 1, 0)
+bgBar.BorderSizePixel = 0
+        bgBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        bgBar.BorderSizePixel = 0
+        Instance.new("UICorner", bgBar).CornerRadius = UDim.new(0, 3)
+
+        local fgBar = Instance.new("Frame", bgBar)
+        fgBar.Name = "Fill"
+        fgBar.Size = UDim2.new(1, 0, 1, 0)
+fgBar.BorderSizePixel = 0
+        fgBar.Position = UDim2.new(0, 0, 1, 0)
+        fgBar.AnchorPoint = Vector2.new(0, 1)
+        fgBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        fgBar.BorderSizePixel = 0
+        Instance.new("UICorner", fgBar).CornerRadius = UDim.new(0, 3)
+
+        billboard.Parent = player.Character
+
+        task.spawn(function()
+            while billboard and billboard.Parent and player.Character and player.Character:FindFirstChild("Humanoid") and healthEspEnabled do
+                local hum = player.Character.Humanoid
+                local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                fgBar.Size = UDim2.new(1, 0, hp, 0)
+                fgBar.BackgroundColor3 = hp < 0.5 and Color3.fromRGB(255, 165, 0) or Color3.fromRGB(0, 255, 0)
+                task.wait(0.1)
+            end
+        end)
+    end
+end
+
+-- Toggle handler
+healthEspToggle.MouseButton1Click:Connect(function()
+    healthEspEnabled = not healthEspEnabled
+    healthEspToggle.Text = "Show Health: " .. (healthEspEnabled and "ON" or "OFF")
+
+    if healthEspEnabled then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            createHealthBar(plr)
+        end
+        table.insert(espConnections, Players.PlayerAdded:Connect(function(plr)
+            plr.CharacterAdded:Connect(function()
+                if healthEspEnabled then
+                    task.wait(1)
+                    createHealthBar(plr)
+                end
+            end)
+        end))
+    else
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr.Character and plr.Character:FindFirstChild("HealthBarESP") then
+                plr.Character.HealthBarESP:Destroy()
+            end
+        end
+    end
+end)
+
+-- Ensure refresh if new character spawned while toggle on
+RunService.RenderStepped:Connect(function()
+    if healthEspEnabled then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and not plr.Character:FindFirstChild("HealthBarESP") then
+                createHealthBar(plr)
+            end
+        end
+    end
 end)
